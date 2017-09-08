@@ -51,7 +51,7 @@ $ bundle install
 Start a Ruby console to start live coding:
 
 ```
-$ pry
+$ bundle exec pry
 ```
 
 ---
@@ -147,7 +147,7 @@ Read contact details from CSV:
 > require 'CSV'
 => true
 > csv_contacts = CSV.read('create_contact/contacts.csv')
-=> [["Moneybird B.V.", "support@moneybird.com", "Enschede"], ["Test bedrijf", "test@foobar.com", "Amsterdam"]]
+=> [["Moneybird B.V.", "support@moneybird.com", "Enschede", "1"], ["Test bedrijf", "test@foobar.com", "Amsterdam", "2"]]
 ```
 
 ---
@@ -177,7 +177,7 @@ https://developer.moneybird.com/api/contacts/#post_contacts
 
 ```
 > responses = csv_contacts.map do |contact|;
->   RestClient.post(@api_url + 'contacts.json', { contact: { company_name: contact[0], send_invoices_to_email: contact[1], city: contact[2] } }, authorization: "Bearer #{@token}");
+>   RestClient.post(@api_url + 'contacts.json', { contact: { company_name: contact[0], send_invoices_to_email: contact[1], city: contact[2], customer_id: contact[3] } }, authorization: "Bearer #{@token}");
 > end
 => [<RestClient::Response 201 "{\"id\":\"1998...">, <RestClient::Response 201 "{\"id\":\"1998...">]
 ```
@@ -196,6 +196,66 @@ https://developer.moneybird.com/api/sales_invoices/#post_sales_invoices
 
 - `POST` request
 - We need to provide a `sales_invoice` parameter
-- We want to provide a `contact_id` and `details_attributes`
+- We want to provide a `contact_id`, `reference`, and `details_attributes`
 
 ---
+
+```
+> csv_sales_invoices = CSV.read('create_sales_invoices/sales_invoices.csv')
+=> [["1", "Project A", "60 uur", "Consultancy", "100"], ["2", "Project B", "90 uur", "Marketing", "60"]]
+```
+---
+
+Let's start by creating only one sales invoice:
+
+```
+> sales_invoice = csv_sales_invoices[0]
+=> ["1", "Project A", "60 uur", "Consultancy", "100"]
+```
+
+---
+
+```
+> detail = { amount: sales_invoice[2], description: sales_invoice[3], price: sales_invoice[4] }
+=> {:amount=>"60 uur", :description=>"Consultancy", :price=>"100"}
+> data = { contact_id: sales_invoice[0], reference: sales_invoice[1], details_attributes: { 1 => detail } }
+=> {:contact_id=>"1", :reference=>"Project A", :details_attributes=>{1=>{:amount=>"60 uur", :description=>"Consultancy", :price=>"100"}}}
+```
+
+---
+
+Question: is customer id also the contact_id Moneybird expects?
+
+---
+
+https://developer.moneybird.com/api/contacts/#get_contacts_customer_id_customer_id
+
+```
+> response = RestClient.get(@api_url + "contacts/customer_id/#{sales_invoice[0]}", authorization: "Bearer #{@token}")
+=> <RestClient::Response 200 "{\"id\":\"1060...">
+> contact_id = JSON.parse(response.body)["id"]
+=> "106067045087446137"
+```
+
+---
+
+```
+> data = { contact_id: contact_id, reference: sales_invoice[1], details_attributes: { 1 => detail } }
+=> {:contact_id=>"106067045087446137", :reference=>"Project A", :details_attributes=>{1=>{:amount=>"60 uur", :description=>"Consultancy", :price=>"100"}}}
+```
+
+---
+
+```
+> response = RestClient.post(@api_url + 'sales_invoices.json', { sales_invoice: data }, authorization: "Bearer #{@authentication_key}")
+=> <RestClient::Response 201 "{\"id\":\"1998..."
+```
+
+---
+
+```
+> created_sales_invoice = JSON.parse(response.body)
+=> {"id"=>"199899759993947267",
+ "administration_id"=>"106067042543600642",
+ "contact_id"=>"106067045087446137",
+```
