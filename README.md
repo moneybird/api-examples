@@ -18,3 +18,9 @@ Each example in the subfolders can be run independently, for example:
 ```
 bundle exec authentication/test_authentication.rb
 ```
+
+## The workshop
+
+Sheets from the workshop about using the API can be found in PITCHME.md and on Gitpitch.com:
+
+[![GitPitch](https://gitpitch.com/assets/badge.svg)](https://gitpitch.com/moneybird/api-examples/master?grs=github&t=white)
